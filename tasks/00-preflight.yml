@@ -7,6 +7,24 @@
       - node_exporter_version | length
     quiet: true
 
+- name: check "node_exporter_web_listen_address" variable
+  tags: always
+  assert:
+    that:
+      - node_exporter_web_listen_address is defined
+      - node_exporter_web_listen_address is string
+      - node_exporter_web_listen_address | length
+    quiet: true
+
+- name: check "node_exporter_web_telemetry_path" variable
+  tags: always
+  assert:
+    that:
+      - node_exporter_web_telemetry_path is defined
+      - node_exporter_web_telemetry_path is string
+      - node_exporter_web_telemetry_path | length
+    quiet: true
+
 - name: check "node_exporter_dirs" variable
   tags: always
   assert:
@@ -16,12 +34,22 @@
       - node_exporter_dirs | length
     quiet: true
 
-- name: check "node_exporter_flags" variable
+- name: check "node_exporter_enabled_collectors" variable
   tags: always
   assert:
     that:
-      - node_exporter_flags is defined
-      - node_exporter_flags is mapping
+      - node_exporter_enabled_collectors is defined
+      - node_exporter_enabled_collectors is iterable
+      - node_exporter_enabled_collectors is not string
+    quiet: true
+
+- name: check "node_exporter_disabled_collectors" variable
+  tags: always
+  assert:
+    that:
+      - node_exporter_disabled_collectors is defined
+      - node_exporter_disabled_collectors is iterable
+      - node_exporter_disabled_collectors is not string
     quiet: true
 
 - name: check "node_exporter_service" variable

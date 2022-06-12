@@ -25,14 +25,37 @@ node_exporter_dir: "/opt/node-exporter"
 node_exporter_dirs:
   main:
     path: "{{ node_exporter_dir }}"
+  certs:
+    path: "{{ node_exporter_dir }}/certs"
+  textfile:
+    path: "{{ node_exporter_dir }}/textfile"
   logs:
     path: "/var/log/node-exporter"
 ```
 
-#### `node_exporter_flags`
+#### `node_exporter_enabled_collectors`
 
-- `docker run --rm prom/node-exporter -h`
+- [collectors](https://github.com/prometheus/node_exporter#collectors)
 - example: please see [defaults/example.yml](https://github.com/nahsi/ansible-node-exporter/blob/master/defaults/example.yml)
+- default:
+```yaml
+node_exporter_enabled_collectors:
+  - textfile:
+      directory: "{{ node_exporter_dirs.textfile.path }}"
+```
+
+#### `node_exporter_disabled_collectors`
+
+- [collectors](https://github.com/prometheus/node_exporter#collectors)
+- example: please see [defaults/example.yml](https://github.com/nahsi/ansible-node-exporter/blob/master/defaults/example.yml)
+
+#### `node_exporter_web_listen_address`
+
+- default: `:9100`
+
+#### `node_exporter_web_telemetry_path`
+
+- default: `/metrics`
 
 #### `node_exporter_user`
 
