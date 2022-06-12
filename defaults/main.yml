@@ -1,0 +1,79 @@
+skip_handlers: false
+
+node_exporter_user: "node-exporter"
+node_exporter_group: "node-exporter"
+
+node_exporter_flags: {}
+
+node_exporter_dir: "/opt/node-exporter"
+node_exporter_dirs:
+  main:
+    path: "{{ node_exporter_dir }}"
+  certs:
+    path: "{{ node_exporter_dir }}/certs"
+  logs:
+    path: "/var/log/node-exporter"
+
+node_exporter_service: |
+  #!/sbin/openrc-run
+
+  description="Promethes Node Exporter"
+
+  group="${RC_SVCNAME}"
+  user="${RC_SVCNAME}"
+
+  supervisor="supervise-daemon"
+  pidfile="/run/${RC_SVCNAME}.pid"
+  command="/usr/bin/${RC_SVCNAME}"
+  {% if node_exporter_flags | length %}
+  command_args="{% for k,v in node_exporter_flags.items() %} \
+    --{{ k }}={{ v }} \
+  {% endfor %}"
+  {% endif %}
+  command_background="true"
+  extra_started_commands="reload"
+
+  output_log="{{ node_exporter_dirs.logs.path }}/node-exporter.log"
+  error_log="{{ node_exporter_dirs.logs.path }}/node-exporter.log"
+
+  depend() {
+    need net
+  }
+
+  reload() {
+    ebegin "Reloading node-exporter"
+    ${supervisor} ${RC_SVCNAME} --signal HUP --pidfile "${PIDFILE}"
+    eend $?
+  }
+
+node_exporter_unit: |
+  [Unit]
+  Description=Prometheus Node Exporter
+  After=network-online.target
+
+  [Service]
+  Type=simple
+  User={{ node_exporter_user }}
+  Group={{ node_exporter_group }}
+  {% if not node_exporter_flags | length -%}
+  ExecStart=/usr/bin/node-exporter
+  {% else %}
+  ExecStart=/usr/bin/node-exporter \
+    {% for k,v in node_exporter_flags.items() %}
+    --{{ k }}={{ v }} \
+    {% endfor %}
+  {% endif %}
+
+  SyslogIdentifier=node-exporter
+  Restart=always
+  RestartSec=1
+  StartLimitInterval=0
+  NoNewPrivileges=yes
+
+  ProtectSystem=strict
+  ProtectControlGroups=true
+  ProtectKernelModules=true
+  ProtectKernelTunables=yes
+
+  [Install]
+  WantedBy=multi-user.target
