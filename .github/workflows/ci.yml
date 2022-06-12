@@ -15,6 +15,7 @@ concurrency:
 env:
   PY_COLORS: 1
   ANSIBLE_FORCE_COLOR: 1
+  OBJC_DISABLE_INITIALIZE_FORK_SAFETY: YES
 
 jobs:
   lint:
