@@ -1,0 +1,110 @@
+skip_handlers: false
+
+node_exporter_user: "node-exporter"
+node_exporter_group: "node-exporter"
+
+node_exporter_web_listen_address: ":9100"
+node_exporter_web_telemetry_path: "/metrics"
+
+node_exporter_enabled_collectors:
+  - textfile:
+      directory: "{{ node_exporter_dirs.textfile.path }}"
+
+node_exporter_disabled_collectors: []
+
+node_exporter_dir: "/opt/node-exporter"
+node_exporter_dirs:
+  main:
+    path: "{{ node_exporter_dir }}"
+  certs:
+    path: "{{ node_exporter_dir }}/certs"
+  textfile:
+    path: "{{ node_exporter_dir }}/textfile"
+  logs:
+    path: "/var/log/node-exporter"
+
+node_exporter_service: |
+  #!/sbin/openrc-run
+
+  description="Promethes Node Exporter"
+
+  group="${RC_SVCNAME}"
+  user="${RC_SVCNAME}"
+
+  supervisor="supervise-daemon"
+  pidfile="/run/${RC_SVCNAME}.pid"
+  command="/usr/bin/${RC_SVCNAME}"
+  command_args="\
+  {% for collector in node_exporter_enabled_collectors -%}
+  {%   if not collector is mapping %}
+      --collector.{{ collector }} \
+  {%   else -%}
+  {%     set name, options = (collector.items()|list)[0] -%}
+      --collector.{{ name }} \
+  {%     for k,v in options|dictsort %}
+      --collector.{{ name }}.{{ k }}={{ v | quote }} \
+  {%     endfor -%}
+  {%   endif -%}
+  {% endfor -%}
+  {% for collector in node_exporter_disabled_collectors %}
+      --no-collector.{{ collector }} \
+  {% endfor %}
+      --web.listen-address={{ node_exporter_web_listen_address }} \
+      --web.telemetry-path={{ node_exporter_web_telemetry_path }}"
+
+  command_background="true"
+  extra_started_commands="reload"
+
+  output_log="{{ node_exporter_dirs.logs.path }}/node-exporter.log"
+  error_log="{{ node_exporter_dirs.logs.path }}/node-exporter.log"
+
+  depend() {
+    need net
+  }
+
+  reload() {
+    ebegin "Reloading node-exporter"
+    ${supervisor} ${RC_SVCNAME} --signal HUP --pidfile "${PIDFILE}"
+    eend $?
+  }
+
+node_exporter_unit: |
+  [Unit]
+  Description=Prometheus Node Exporter
+  After=network-online.target
+
+  [Service]
+  Type=simple
+  User={{ node_exporter_user }}
+  Group={{ node_exporter_group }}
+  ExecStart=/usr/bin/node-exporter \
+  {% for collector in node_exporter_enabled_collectors -%}
+  {%   if not collector is mapping %}
+      --collector.{{ collector }} \
+  {%   else -%}
+  {%     set name, options = (collector.items()|list)[0] -%}
+      --collector.{{ name }} \
+  {%     for k,v in options|dictsort %}
+      --collector.{{ name }}.{{ k }}={{ v | quote }} \
+  {%     endfor -%}
+  {%   endif -%}
+  {% endfor -%}
+  {% for collector in node_exporter_disabled_collectors %}
+      --no-collector.{{ collector }} \
+  {% endfor %}
+      --web.listen-address={{ node_exporter_web_listen_address }} \
+      --web.telemetry-path={{ node_exporter_web_telemetry_path }}
+
+  SyslogIdentifier=node-exporter
+  Restart=always
+  RestartSec=1
+  StartLimitInterval=0
+  NoNewPrivileges=yes
+
+  ProtectSystem=strict
+  ProtectControlGroups=true
+  ProtectKernelModules=true
+  ProtectKernelTunables=yes
+
+  [Install]
+  WantedBy=multi-user.target

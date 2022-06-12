@@ -1,0 +1,102 @@
+- name: download node-exporter to localhost
+  become: false
+  run_once: true
+  delegate_to: localhost
+  get_url:
+    url: "{{ _archive_url }}"
+    dest: "{{ role_path }}/files/{{ _archive }}"
+    checksum: "sha256:{{ _archive_checksum }}"
+  register: _download_archive
+  until: _download_archive is succeeded
+  retries: 5
+  delay: 2
+
+- name: create node-exporter system group
+  group:
+    name: "{{ node_exporter_group }}"
+    system: true
+    state: present
+  when: node_exporter_group != "root"
+
+- name: create node-exporter system user
+  user:
+    name: "{{ node_exporter_user }}"
+    system: true
+    shell: "/sbin/nologin"
+    group: "{{ node_exporter_group }}"
+    create_home: false
+    state: present
+  when: node_exporter_group != "root"
+
+- name: create node-exporter directories
+  file:
+    path: "{{ dir.value.path }}"
+    state: directory
+    owner: "{{ dir.group | default(node_exporter_user) }}"
+    group: "{{ dir.group | default(node_exporter_group) }}"
+    mode: "{{ dir.value.mode | default(755) }}"
+  loop: "{{ node_exporter_dirs | dict2items }}"
+  loop_control:
+    loop_var: dir
+    label: "{{ dir.key }}"
+
+- name: unpack node-exporter
+  become: false
+  delegate_to: localhost
+  unarchive:
+    src: "{{ role_path }}/files/{{ _archive }}"
+    dest: "/tmp/"
+    creates: "{{ _archive_dir }}/node_exporter"
+
+- name: propagate node-exporter binary
+  copy:
+    src: "{{ _archive_dir }}/node_exporter"
+    dest: "/usr/bin/node-exporter"
+    owner: root
+    group: root
+    mode: 0555
+  notify: restart node-exporter
+
+- name: delete archive directory
+  become: false
+  run_once: true
+  delegate_to: localhost
+  file:
+    dest: "{{ _archive_dir }}"
+    state: absent
+  when: not lookup("env", "MOLECULE_SCENARIO_NAME") | default("")
+
+- name: create node-exporter service file
+  tags: config
+  copy:
+    content: "{{ node_exporter_service }}"
+    dest: "/etc/init.d/node-exporter"
+    owner: root
+    group: root
+    mode: 0755
+  notify: restart node-exporter
+  when: ansible_service_mgr == "openrc"
+
+- name: enable node-exporter
+  service:
+    name: node-exporter
+    enabled: true
+  when: ansible_service_mgr == "openrc"
+
+- name: create node-exporter unit file
+  tags: config
+  copy:
+    content: "{{ node_exporter_unit }}"
+    dest: "/etc/systemd/system/node-exporter.service"
+    owner: root
+    group: root
+    mode: 0755
+  notify: restart node-exporter
+  when: ansible_service_mgr == "systemd"
+
+- name: enable node-exporter
+  systemd:
+    name: node-exporter
+    enabled: true
+    daemon_reload: true
+  when: ansible_service_mgr == "systemd"

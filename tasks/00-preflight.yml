@@ -1,0 +1,79 @@
+- name: check "node_exporter_version" variable
+  tags: always
+  assert:
+    that:
+      - node_exporter_version is defined
+      - node_exporter_version is string
+      - node_exporter_version | length
+    quiet: true
+
+- name: check "node_exporter_web_listen_address" variable
+  tags: always
+  assert:
+    that:
+      - node_exporter_web_listen_address is defined
+      - node_exporter_web_listen_address is string
+      - node_exporter_web_listen_address | length
+    quiet: true
+
+- name: check "node_exporter_web_telemetry_path" variable
+  tags: always
+  assert:
+    that:
+      - node_exporter_web_telemetry_path is defined
+      - node_exporter_web_telemetry_path is string
+      - node_exporter_web_telemetry_path | length
+    quiet: true
+
+- name: check "node_exporter_dirs" variable
+  tags: always
+  assert:
+    that:
+      - node_exporter_dirs is defined
+      - node_exporter_dirs is mapping
+      - node_exporter_dirs | length
+    quiet: true
+
+- name: check "node_exporter_enabled_collectors" variable
+  tags: always
+  assert:
+    that:
+      - node_exporter_enabled_collectors is defined
+      - node_exporter_enabled_collectors is iterable
+      - node_exporter_enabled_collectors is not string
+    quiet: true
+
+- name: check "node_exporter_disabled_collectors" variable
+  tags: always
+  assert:
+    that:
+      - node_exporter_disabled_collectors is defined
+      - node_exporter_disabled_collectors is iterable
+      - node_exporter_disabled_collectors is not string
+    quiet: true
+
+- name: check "node_exporter_service" variable
+  tags: always
+  assert:
+    that:
+      - node_exporter_service is defined
+      - node_exporter_service is string
+      - node_exporter_service | length
+    quiet: true
+  when: ansible_service_mgr == "openrc"
+
+- name: check "node_exporter_unit" variable
+  tags: always
+  assert:
+    that:
+      - node_exporter_unit is defined
+      - node_exporter_unit is string
+      - node_exporter_unit | length
+    quiet: true
+
+- name: set checksum for {{ _arch }} architecture
+  set_fact:
+    _archive_checksum: "{{ item.split(' ')[0] }}"
+  with_items: "{{ _checksums }}"
+  when:
+    - "('linux-' + _arch + '.tar.gz') in item"
